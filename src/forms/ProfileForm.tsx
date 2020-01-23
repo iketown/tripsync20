@@ -5,10 +5,10 @@ import {
   DialogContent,
   DialogActions,
   Grid,
-  TextField,
   Button,
   LinearProgress
 } from "@material-ui/core";
+import { TextInput } from "./inputs";
 
 const ProfileForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { firestore, user } = useFirebaseCtx();
@@ -75,29 +75,3 @@ const ProfileForm = ({ onSuccess }: { onSuccess?: () => void }) => {
 };
 
 export default ProfileForm;
-
-const TextInput = ({
-  name,
-  label,
-  fullWidth
-}: {
-  name: string;
-  label?: string;
-  rest?: any;
-  fullWidth?: boolean;
-}) => {
-  return (
-    <Field name={name}>
-      {({ input, meta }) => {
-        return (
-          <TextField
-            {...input}
-            {...{ label, fullWidth }}
-            helperText={(meta.touched && meta.error) || meta.submitError}
-            error={meta.touched && meta.error}
-          />
-        );
-      }}
-    </Field>
-  );
-};

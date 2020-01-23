@@ -33,7 +33,7 @@ const NavBar = () => {
   const classes = useStyles();
   const { firebase, user } = useFirebaseCtx();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [dialogOpen, setDialogOpen] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const handleSignOut = () => {
     firebase.auth().signOut();
     navigate("/");
