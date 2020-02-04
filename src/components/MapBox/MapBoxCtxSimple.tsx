@@ -5,49 +5,60 @@ import {
   NearbyAirport,
   Route
 } from "../../types/location.types";
+import { Event } from "../../types/Event";
+
+type LocCategory = "hotels" | "gigs" | "otherLocs" | "airports";
+type Side = "toLocs" | "fromLocs";
 
 type MapBoxState = {
-  hotels: LocBasicType[];
-  gigLocs: LocBasicType[];
-  otherLocs: LocBasicType[];
-  airports: NearbyAirport[];
+  fromLocs: {
+    hotels: LocBasicType[];
+    gigs: Event[];
+    otherLocs: LocBasicType[];
+    airports: NearbyAirport[];
+  };
+  toLocs: {
+    hotels: LocBasicType[];
+    gigs: Event[];
+    otherLocs: LocBasicType[];
+    airports: NearbyAirport[];
+  };
   routes: Route[];
   bounds?: LocPoint[];
   selectedLocId?: string;
   selectedLocBasic?: LocBasicType;
 };
+type MapBoxCombinedState = {
+  to: MapBoxState;
+  from: MapBoxState;
+};
+
 export type Action = {
   type:
     | "SET_HOTELS"
     | "SET_GIGS"
     | "SET_OTHERS"
     | "SET_AIRPORTS"
+    | "SET_LOCS"
     | "SET_ROUTES"
+    | "SET_BOUNDS"
     | "ADD_TO_BOUNDS";
   payload: any;
 };
 
-const initializer = ({
-  hotels,
-  gigLocs,
-  otherLocs,
-  airports,
-  routes
-}: MapBoxState) => {
-  return stateWithBounds({
-    hotels,
-    gigLocs,
-    airports,
-    otherLocs,
-    routes
-  });
-};
-
-const initialState = {
-  hotels: [],
-  gigLocs: [],
-  airports: [],
-  otherLocs: [],
+const initialState: MapBoxState = {
+  fromLocs: {
+    hotels: [],
+    gigs: [],
+    airports: [],
+    otherLocs: []
+  },
+  toLocs: {
+    hotels: [],
+    gigs: [],
+    airports: [],
+    otherLocs: []
+  },
   routes: [],
   bounds: []
 };
@@ -59,57 +70,39 @@ type ContextType = {
 
 const MapBoxCtx = createContext<Partial<ContextType>>({ state: initialState });
 
-const stateWithBounds = (
-  state: MapBoxState,
-  otherBoundsPoints?: LocPoint[]
-): MapBoxState => {
-  const { hotels = [], gigLocs = [], airports = [], otherLocs = [] } = state;
-  if (otherBoundsPoints) {
-  }
-  const newBounds = [
-    ...hotels,
-    ...gigLocs,
-    ...airports,
-    ...otherLocs,
-    ...(otherBoundsPoints || []).map(loc => ({ ...loc, keepMe: true }))
-  ].map((loc, index) => {
-    if (!loc) return null;
-    //@ts-ignore
-    if (loc.distanceMi && loc.distanceMi > 100 && !loc.keepMe) return null;
-    const { lat, lng } = loc;
-    return { lat, lng };
-  });
-  //@ts-ignore
-  return { ...state, bounds: newBounds.filter(loc => !!loc) };
-};
-
 const reducer = (state: MapBoxState, action: Action) => {
-  console.log("reducer", action);
   switch (action.type) {
-    case "SET_HOTELS": {
-      const { hotels } = action.payload;
-      return stateWithBounds({ ...state, hotels });
+    // case "SET_HOTELS": {
+    //   const { hotels } = action.payload;
+    //   return stateWithBounds({ ...state, hotels });
+    // }
+    case "SET_LOCS": {
+      const { locs, toOrFrom, locName } = action.payload;
+      let side;
+      if (toOrFrom === "to") side = "toLocs";
+      if (toOrFrom === "from") side = "fromLocs";
+      if (side === "toLocs" || side === "fromLocs") {
+        return {
+          ...state,
+          [side]: { ...state[side], [locName]: locs }
+        };
+      }
+      break;
     }
-    case "SET_AIRPORTS": {
-      const { airports } = action.payload;
-      return stateWithBounds({ ...state, airports });
+    case "SET_BOUNDS": {
+      const { bounds } = action.payload;
+      return { ...state, bounds };
     }
-    case "SET_GIGS": {
-      const { gigLocs } = action.payload;
-      return stateWithBounds({ ...state, gigLocs });
-    }
-    case "SET_OTHERS": {
-      const { otherLocs } = action.payload;
-      return stateWithBounds({ ...state, otherLocs });
-    }
+
     case "SET_ROUTES": {
       const { routes } = action.payload;
       return { ...state, routes };
     }
-    case "ADD_TO_BOUNDS": {
-      const { locs } = action.payload;
-      return stateWithBounds({ ...state }, locs);
-    }
+
+    // case "ADD_TO_BOUNDS": {
+    //   const { locs } = action.payload;
+    //   return stateWithBounds({ ...state }, locs);
+    // }
 
     default:
       return state;
@@ -117,12 +110,8 @@ const reducer = (state: MapBoxState, action: Action) => {
 };
 
 export const MapBoxCtxProvider = (props: any) => {
-  const { gigLocs, hotels, airports, routes } = props;
-  const [state, dispatch] = useReducer(
-    reducer,
-    { ...initialState, gigLocs, hotels, airports, routes },
-    initializer
-  );
+  //@ts-ignore
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   return (
     <MapBoxCtx.Provider

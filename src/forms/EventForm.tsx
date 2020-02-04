@@ -50,7 +50,15 @@ const EventForm = ({
     if (eventInfo.locBasic.id) {
       eventInfo.locId = eventInfo.locBasic.id;
     }
-    console.log("eventInfo", eventInfo);
+    eventInfo.startUnix = moment(eventInfo.startDate).unix();
+    if (eventInfo.endDate) {
+      eventInfo.endDate = convertToTZTime(
+        eventInfo.endDate,
+        eventInfo.startLocBasic?.timeZoneId
+      );
+      eventInfo.endUnix = moment(eventInfo.endDate).unix();
+    }
+
     if (docLoc) {
       await firestore?.doc(docLoc).update(removeMissing(eventInfo));
     } else {

@@ -23,28 +23,35 @@ import useLocation from "../../hooks/useLocation";
 //
 //
 export const EventLocInput = ({
-  location,
   onSelect,
   label,
   placeholder,
   locBasicName,
   idName,
-  biasCenterLoc
+  biasCenterLoc,
+  location
 }: {
-  location?: LocBasicType;
   onSelect?: () => void;
   label?: string;
   placeholder?: string;
   idName: string;
   locBasicName: string;
   biasCenterLoc?: LocPoint;
+  location?: LocBasicType;
 }) => {
-  const [editing, setEditing] = useState(!location);
   const [submitting, setSubmitting] = useState(false);
   const { getLocFromPlaceId, createLoc } = useLocation();
   const { batch, change } = useForm();
+
   const locBasicField = useField(locBasicName);
   const locIdField = useField(idName);
+
+  location = location || locBasicField.input.value;
+  const [editing, setEditing] = useState(!location);
+
+  useEffect(() => {
+    if (location) setEditing(false);
+  }, [location]);
 
   const handleChange = async (loc: LocationType) => {
     let fbLoc = await getLocFromPlaceId(loc.placeId);
@@ -63,12 +70,9 @@ export const EventLocInput = ({
       onSelect && onSelect();
     }
   };
-  useEffect(() => {
-    if (location && location.address) setEditing(false);
-  }, [location]);
 
   // return locContent or editingContent depending on 'editing' boolean
-  const locContent = <AddressDisplay location={location} />;
+  const locContent = <AddressDisplay {...{ location }} />;
   const editingContent = (
     <div style={{ marginBottom: "10px", width: "100%" }}>
       <GoogPlacesAC

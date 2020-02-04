@@ -2,33 +2,36 @@ import React from "react";
 import { DateTimePicker } from "@material-ui/pickers";
 import { Field } from "react-final-form";
 import moment from "moment-timezone";
+import ShowTree from "../../utils/ShowTree";
+import { initializeApp } from "firebase";
+import { Moment } from "moment-timezone";
 export const DateTimeInput = ({
   name,
   label,
   timeZoneId,
-  onSelect
+  onSelect,
+  initialValue
 }: {
   name: string;
   label: string;
   timeZoneId?: string;
   onSelect?: () => void;
+  initialValue?: Moment;
 }) => {
   return (
-    <Field name={name}>
+    <Field name={name} initialValue={initialValue}>
       {({ input, meta }) => {
         const handleChange = (value: any) => {
-          if (timeZoneId) {
-            const strippedVal = value.format("YYYY-MM-DD HH:mm");
-            const tzTime = moment.tz(strippedVal, timeZoneId).format();
-            input.onChange(tzTime);
-          } else {
-            input.onChange(value);
-          }
+          input.onChange(value);
           onSelect && onSelect();
         };
+        const valueMoment =
+          typeof input.value === "number"
+            ? moment.unix(input.value)
+            : moment(input.value);
         const value = timeZoneId
-          ? moment(input.value).tz(timeZoneId)
-          : input.value;
+          ? moment(valueMoment).tz(timeZoneId)
+          : valueMoment;
         return (
           <DateTimePicker
             error={meta.dirty && !!meta.error}

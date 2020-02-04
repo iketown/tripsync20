@@ -1,102 +1,151 @@
-import { Grid } from "@material-ui/core";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useField } from "react-final-form";
+import {
+  Divider as MuiDivider,
+  Grid,
+  Typography,
+  Checkbox,
+  FormControl,
+  FormControlLabel
+} from "@material-ui/core";
+import React, { useState } from "react";
+import { useField, useForm } from "react-final-form";
+import styled from "styled-components";
 
-import { MapBoxCtxProvider } from "../../components/MapBox/MapBoxCtxSimple";
-import TravelTargetMap from "../../components/MapBox/TravelTargetMap";
-import { TravelTypeOption } from "../../types/travel.types";
-import { AirportSwitcher, DateTimeInput, GroundSwitcher } from "../inputs";
-import TravelTypeSelect from "../inputs/TravelTypeSelect";
-import TravelFormNearbyAirports from "./TravelFormNearbyAirports";
-import TravelFormRelatedEvents from "./TravelFormRelatedEvents";
-import RouteDrawer from "./RouteDrawer";
 import { Event } from "../../types/Event";
-
+import { TravelTypeOption } from "../../types/travel.types";
+import ShowMe from "../../utils/ShowMe";
+import { LocalAirport } from "../formComponents/MaterialAirportAC/airportAChelpers";
+import MaterialAirportAC from "../formComponents/MaterialAirportAC/MaterialAirportAC";
+import { DateTimeInput, EventLocInput } from "../inputs";
+import TravelTypeSelect from "../inputs/TravelTypeSelect";
+import AddLegButton from "./AddLegButton";
+import DefaultGroundOptions from "./DefaultGroundOptions";
+import ShowTree from "../../utils/ShowTree";
+import TravelFormLockedLeg from "./TravelFormLockedLeg";
+const Divider = styled(MuiDivider)`
+  width: calc(100% - 2rem);
+  margin: 1rem !important;
+`;
 const TravelFormLeg = ({
   leg,
   index,
   fromEvent,
-  toEvent
+  toEvent,
+  fields
 }: {
   leg: string;
   index: number;
   fromEvent?: Event;
   toEvent?: Event;
+  fields: any;
 }) => {
+  const { input } = useField(`${leg}.travelType`);
+  const [showInfo, setShowInfo] = useState(false);
+  const travelType = input?.value;
+  const { change } = useForm();
   const {
-    input: { value: travelType }
-  } = useField(`${leg}.travelType`);
+    input: { value: fromLocBasic }
+  } = useField(`${leg}.fromLocBasic`);
+  const {
+    input: { value: toLocBasic }
+  } = useField(`${leg}.toLocBasic`);
+  const {
+    input: { value: legInfo }
+  } = useField(leg);
 
-  return (
+  const checkBox = (
     <Grid container spacing={2}>
+      <Grid item xs={12}>
+        <FormControl>
+          <FormControlLabel
+            label="show form"
+            control={
+              <Checkbox
+                value={showInfo}
+                onChange={(e, chk) => setShowInfo(chk)}
+              />
+            }
+          />
+        </FormControl>
+
+        {showInfo && <ShowTree obj={legInfo} name="legInfo" />}
+      </Grid>
+    </Grid>
+  );
+
+  const manualEntryForm = (
+    <Grid container item xs={12} spacing={2}>
       <Grid container spacing={2} item xs={12}>
         <Grid item xs={12} sm={4}>
           <TravelTypeSelect name={`${leg}.travelType`} />
         </Grid>
         <Grid item xs={12} sm={4}>
           <DateTimeInput
-            name={`${leg}.startDate`}
+            name={`${leg}.startUnix`}
             label="Start"
-            timeZoneId={fromEvent?.locBasic?.timeZoneId}
+            timeZoneId={
+              fromLocBasic?.timeZoneId || fromEvent?.locBasic?.timeZoneId
+            }
           />
         </Grid>
         <Grid item xs={12} sm={4}>
           <DateTimeInput
-            name={`${leg}.endDate`}
+            name={`${leg}.endUnix`}
             label="End"
-            timeZoneId={toEvent?.locBasic?.timeZoneId}
+            timeZoneId={toLocBasic?.timeZoneId || toEvent?.locBasic?.timeZoneId}
           />
         </Grid>
       </Grid>
-      {/* <Grid item xs={12}>
-        <ShowMe obj={state} name="state" />
-        <ShowMe obj={values} name="values" />
-        <ShowMe obj={errors} name="errors" />
-      </Grid> */}
       {[
         {
+          event: fromEvent,
           locBasic: fromEvent?.locBasic,
           locBasicName: `${leg}.fromLocBasic`,
           idName: `${leg}.fromLocId`,
-          label: "from"
+          label: "from",
+          toOrFrom: "from"
         },
         {
+          event: toEvent,
           locBasic: toEvent?.locBasic,
           locBasicName: `${leg}.toLocBasic`,
           idName: `${leg}.toLocId`,
-          label: "to"
+          label: "to",
+          toOrFrom: "to"
         }
-      ].map(({ locBasic, locBasicName, idName, label }) => {
-        console.log(locBasicName, locBasic);
+      ].map(({ event, locBasic, locBasicName, idName, label, toOrFrom }) => {
+        const handleAPChange = (ap: LocalAirport) => {
+          change(locBasicName, ap);
+          change(idName, ap && ap.placeId);
+        };
         return (
           <Grid key={locBasicName} item xs={12} sm={6}>
             {locBasic && (
-              <MapBoxCtxProvider gigLocs={[locBasic]}>
+              <>
                 {travelType === TravelTypeOption.fly ? (
-                  <AirportSwitcher
-                    defaultAirports={[]}
-                    {...{ locBasicName, idName, label }}
+                  <MaterialAirportAC
+                    key={idName}
+                    {...{ label, toOrFrom, idName, locBasicName }}
                   />
                 ) : (
-                  <GroundSwitcher
-                    // defaultLocs={[fromLoc]}
-                    {...{ locBasicName, idName, label }}
-                  />
+                  <div>
+                    <EventLocInput {...{ idName, locBasicName, label }} />
+                    <DefaultGroundOptions
+                      {...{ index, idName, locBasicName, toOrFrom }}
+                    />
+                  </div>
                 )}
-                <TravelTargetMap {...{ locBasicName, idName }} />
-                <TravelFormNearbyAirports leg={leg} loc={locBasic} />
-                {fromEvent && (
-                  <TravelFormRelatedEvents leg={leg} event={fromEvent} />
-                )}
-                <RouteDrawer leg={leg} />
-                {/*   <AddSelectedToBounds fieldName={`${leg}.fromLocBasic`} /> */}
-              </MapBoxCtxProvider>
+              </>
             )}
           </Grid>
         );
       })}
-      }
+      <Divider />
     </Grid>
+  );
+  return legInfo && legInfo.enteredBy === "emailImport" ? (
+    <TravelFormLockedLeg leg={leg} />
+  ) : (
+    manualEntryForm
   );
 };
 

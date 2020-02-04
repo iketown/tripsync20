@@ -8,10 +8,12 @@ import { TravelTypeOption } from "../../types/travel.types";
 
 const TravelFormNearbyAirports = ({
   loc,
-  leg
+  leg,
+  toOrFrom
 }: {
   loc?: LocBasicType;
   leg: string;
+  toOrFrom?: string;
 }) => {
   const { firestore } = useFirebaseCtx();
   const { state, dispatch } = useMapBoxCtx();
@@ -27,17 +29,17 @@ const TravelFormNearbyAirports = ({
       dispatch &&
         dispatch({
           type: "SET_AIRPORTS",
-          payload: { airports: nearbyAirports }
+          payload: { airports: nearbyAirports, toOrFrom }
         });
     } else {
       // remove from context
       dispatch &&
         dispatch({
           type: "SET_AIRPORTS",
-          payload: { airports: [] }
+          payload: { airports: [], toOrFrom }
         });
     }
-  }, [dispatch, travelType, nearbyAirports]);
+  }, [dispatch, travelType, nearbyAirports, toOrFrom]);
 
   useEffect(() => {
     // get airports from firestore

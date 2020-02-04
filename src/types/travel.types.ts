@@ -1,4 +1,6 @@
 import { LocBasicType } from "./location.types";
+import { TravelEmail, Traveler } from "../forms/smartTravels/travelEmail.types";
+import { Moment } from "moment";
 export type TravelBasic = {
   id: string;
   // id is same as the destination eventID
@@ -31,24 +33,39 @@ export type TravelType = {
   id?: string;
   toEventId: string;
   fromEventId: string;
-  startDate: string;
-  endDate: string;
-  legs: TravelLeg[];
+  startUnix: number;
+  endUnix?: number;
+  legs: { [legId: string]: TravelLeg };
+  travelEmails: { [id: string]: TravelEmail };
 };
 
 export type TravelLeg = {
   endDate?: string;
+  startUnix: number;
+  endUnix: number;
+  startMoment?: Moment;
+  endMoment?: Moment;
   fromLocBasic: LocBasicType;
   fromLocId: string;
+  toLocBasic: LocBasicType;
+  toLocId: string;
+  travelType: TravelTypeOption;
+  company: string;
+  companyId?: string;
+  tripId: string;
+  // tripId is flight number, etc
+  enteredBy?: "emailImport" | "manual";
+  confirmationNo?: string;
+  travelerNames?: Traveler[];
+  travelerIds?: string[];
   km?: number;
   miles?: number;
   minutes?: number;
   startDate?: string;
-  toLocBasic: LocBasicType;
-  toLocId: string;
-  travelType: TravelTypeOption;
   itinIds?: string[];
   itinBasics?: Itinerary[];
+  path?: any;
+  info?: any;
 };
 
 export type Itinerary = {

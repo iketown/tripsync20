@@ -7,7 +7,10 @@ import Loading from "../components/Loading";
 import { Typography, Button } from "@material-ui/core";
 import GroupAdmin from "../components/group/GroupAdmin";
 import { useGroupCtx, GroupCtxProvider } from "../components/group/GroupCtx";
+import { PeopleCtxProvider } from "../contexts/peopleCtx/PeopleCtx";
 import { EventsCtxProvider } from "../contexts/eventsCtx/EventsCtx";
+import { DateRangeCtxProvider } from "../contexts/dateRangeCtx/DateRangeCtx";
+import { TravelCtxProvider } from "../contexts/travelCtx/TravelCtx";
 import DialogContainer from "../contexts/dialogCtx/DialogContainer";
 
 interface GroupPageProps extends RouteComponentProps {
@@ -17,10 +20,16 @@ interface GroupPageProps extends RouteComponentProps {
 const GroupPageContainer = (props: GroupPageProps) => {
   return (
     <GroupCtxProvider groupId={props.groupId}>
-      <EventsCtxProvider>
-        <GroupPage />
-        <DialogContainer />
-      </EventsCtxProvider>
+      <DateRangeCtxProvider>
+        <PeopleCtxProvider>
+          <TravelCtxProvider>
+            <EventsCtxProvider>
+              <GroupPage />
+              <DialogContainer />
+            </EventsCtxProvider>
+          </TravelCtxProvider>
+        </PeopleCtxProvider>
+      </DateRangeCtxProvider>
     </GroupCtxProvider>
   );
 };

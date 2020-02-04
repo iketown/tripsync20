@@ -1,26 +1,27 @@
-import React, { useEffect, useState } from "react";
 import {
-  Grid,
-  DialogContent,
+  Button,
   DialogActions,
+  DialogContent,
   DialogTitle,
-  Button
+  Grid
 } from "@material-ui/core";
-import { Form, Field, useField } from "react-final-form";
-import { TextInput, EventLocInput, DateTimeInput } from "./inputs";
-import { useFirebaseCtx } from "../contexts/FirebaseCtx";
-import { useDialogCtx } from "../contexts/dialogCtx/DialogCtx";
-import ShowMe from "../utils/ShowMe";
+import moment from "moment-timezone";
+import React, { useEffect, useState } from "react";
+import { Form, useField } from "react-final-form";
+import styled from "styled-components";
+
+import { useGroupCtx } from "../components/group/GroupCtx";
 import {
   MapBoxCtxProvider,
   useMapBoxCtx
 } from "../components/MapBox/MapBoxCtxSimple";
 import TravelTargetMap from "../components/MapBox/TravelTargetMap";
-import moment from "moment-timezone";
-import styled from "styled-components";
-import { useGroupCtx } from "../components/group/GroupCtx";
-import { EventTypeOption } from "../types/Event";
+import { useDialogCtx } from "../contexts/dialogCtx/DialogCtx";
+import { useFirebaseCtx } from "../contexts/FirebaseCtx";
 import { useEventFxns } from "../hooks/useEvents";
+import { EventTypeOption } from "../types/Event";
+import ShowMe from "../utils/ShowMe";
+import { DateTimeInput, EventLocInput } from "./inputs";
 
 const Spacer = styled.div`
   padding: 5px;
@@ -61,14 +62,20 @@ const HotelForm = ({
     groupId && hotelEventId && `groups/${groupId}/events/${hotelEventId}`;
   const collectionLoc = groupId && `groups/${groupId}/events`;
 
-  const onSubmit = (values: any) => {
+  const onSubmit = async (values: any) => {
     console.log("values", values);
-
+    const { locBasic, startDate, endDate } = values;
+    values.startDate = moment.tz(startDate, locBasic.timeZoneId).format();
+    values.endDate = moment.tz(endDate, locBasic.timeZoneId).format();
+    values.startUnix = moment(values.startDate).unix();
+    values.endUnix = moment(values.endDate).unix();
     if (docLoc) {
-      return firestore?.doc(docLoc).update(values);
+      await firestore?.doc(docLoc).update(values);
+      return;
     } else if (collectionLoc) {
       console.log("saving to firestore", collectionLoc);
-      return firestore?.collection(collectionLoc).add(values);
+      await firestore?.collection(collectionLoc).add(values);
+      return;
     } else {
       console.log("didnt work", values, docLoc, collectionLoc);
     }
@@ -78,9 +85,7 @@ const HotelForm = ({
     const errors: any = {};
     return errors;
   };
-  const closeWindow = () => {
-    dispatch({ type: "CLOSE_DIALOG" });
-  };
+
   return (
     <Form {...{ onSubmit, validate, initialValues }}>
       {({

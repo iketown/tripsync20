@@ -25,11 +25,13 @@ export const LocSelectInput = ({
 }: LocSelectInputProps) => {
   const locBasicField = useField(locBasicName);
   const { input: idInput, meta: idMeta } = useField(idName);
+
   const handleChange = (e: any) => {
     const locId = e.target.value;
     idInput.onChange(locId);
     locBasicField.input.onChange(locations.find(loc => loc.id === locId));
   };
+
   return (
     <FormControl error={!idMeta.valid}>
       <InputLabel>{label}</InputLabel>

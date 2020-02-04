@@ -19,6 +19,7 @@ export type NearbyAirport = {
   timeZoneId: string;
   town?: string;
   venueName: string;
+  departing?: boolean;
 };
 
 // export const locTypes = [
@@ -57,6 +58,10 @@ export type LocBasicType = {
   shortName: string;
   timeZoneId: string;
   venueName: string;
+  iataCode?: string;
+  city?: string;
+  state?: string;
+  placeId?: string;
 };
 
 export interface LocPoint {
@@ -68,4 +73,5 @@ export type Route = {
   fromLoc: LocBasicType;
   toLoc: LocBasicType;
   travelType: TravelTypeOption;
+  path?: { lat: number; lng: number }[];
 };

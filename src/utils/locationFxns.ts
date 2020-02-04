@@ -37,6 +37,7 @@ export const getTimeZoneFromLatLng = async ({
 
 export const airportResultToLoc = async (ap: any) => {
   if (ap.locType) return ap;
+
   const { cityName, stateCode, countryCode, countryName } = ap.address;
   const { latitude, longitude } = ap.geoCode;
   const timeZoneId = await getTimeZoneFromLatLng({
@@ -52,7 +53,7 @@ export const airportResultToLoc = async (ap: any) => {
     address: `${cityName} ${stateCode} ${countryCode}`,
     relevance: ap.relevance,
     city: cityName,
-    state: countryName,
+    state: stateCode,
     country: countryName,
     countryShort: countryCode,
     shortName: `${cityName} ${stateCode} ${countryCode}`,
@@ -125,7 +126,7 @@ export const useUSAirports = () => {
 };
 
 export const convertToTZTime = (time: "string", timeZoneId: "string") => {
-  if (!timeZoneId) return time;
+  if (!timeZoneId) return moment(time).format();
   return moment(time)
     .tz(timeZoneId)
     .format();
@@ -157,4 +158,50 @@ export const getDistanceInKm = (loc1: LocPoint, loc2: LocPoint): number => {
 
   const d = getDistanceFromLatLonInKm(loc1.lat, loc1.lng, loc2.lat, loc2.lng);
   return d;
+};
+
+interface DirectionsInterface {
+  fromLat: number;
+  fromLng: number;
+  toLat: number;
+  toLng: number;
+  travelMode: google.maps.TravelMode;
+}
+export const getDirections = async ({
+  fromLat,
+  fromLng,
+  toLat,
+  toLng,
+  travelMode
+}: DirectionsInterface): Promise<{
+  path: any;
+  info: any;
+}> => {
+  const ds = new google.maps.DirectionsService();
+  travelMode = travelMode || "DRIVING";
+  return new Promise((resolve, reject) => {
+    ds.route(
+      {
+        origin: { lat: fromLat, lng: fromLng },
+        destination: { lat: toLat, lng: toLng },
+        travelMode
+      },
+      (result, status) => {
+        if (status === "OK") {
+          const path = result?.routes[0].overview_path.map(({ lat, lng }) => ({
+            lat: lat(),
+            lng: lng()
+          }));
+          //@ts-ignore
+          const info = result?.routes[0].legs.map(({ distance, duration }) => ({
+            distance,
+            duration
+          }));
+          resolve({ path, info });
+        } else {
+          resolve({ path: false, info: false });
+        }
+      }
+    );
+  });
 };

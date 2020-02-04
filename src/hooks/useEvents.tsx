@@ -5,15 +5,10 @@ import { Event, EventTypeOption } from "../types/Event";
 import { useField } from "react-final-form";
 import { useEventsCtx } from "../contexts/eventsCtx/EventsCtx";
 
-export const useNearbyAirports = (eventId: string) => {
-  const { eventsObj } = useEventsCtx();
-  const locId = eventsObj && eventsObj[eventId]?.locId;
-  console.log("locId in useNearbyAPs", locId);
-};
-
 export const useEventFxns = () => {
   const { group } = useGroupCtx();
   const { firestore } = useFirebaseCtx();
+  const { eventsObj } = useEventsCtx();
 
   const deleteEvent = async (eventId: string, cb?: () => void) => {
     if (!group || !group.id) return null;
@@ -21,5 +16,19 @@ export const useEventFxns = () => {
     await eventRef?.delete();
     cb && cb();
   };
-  return { deleteEvent };
+
+  const getNearbyAirports = useCallback(
+    async (eventId: string) => {
+      const locId = eventsObj && eventsObj[eventId]?.locId;
+      const loc =
+        locId &&
+        (await firestore
+          ?.doc(`locations/${locId}`)
+          .get()
+          .then(doc => doc.data()));
+      return loc && loc.nearbyAirports;
+    },
+    [eventsObj, firestore]
+  );
+  return { deleteEvent, getNearbyAirports };
 };

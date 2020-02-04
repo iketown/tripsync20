@@ -34,12 +34,25 @@ export const GroupCtxProvider = ({
       if (snap.exists) {
         const data = snap.data();
         if (data) {
-          const { groupName, createdBy, admins, members } = data;
+          const {
+            groupName,
+            createdBy,
+            admins,
+            members,
+            defaultMapCenter
+          } = data;
           const isOwner = createdBy === user.uid;
           const isAdmin = admins.includes(user.uid);
           const isMember = members && members.includes(user.uid);
           setPermissions({ isAdmin, isMember, isOwner });
-          setGroup({ id: snap.id, groupName, createdBy, admins, members });
+          setGroup({
+            id: snap.id,
+            groupName,
+            createdBy,
+            admins,
+            members,
+            defaultMapCenter
+          });
           setLoading(false);
         }
       } else {

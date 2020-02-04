@@ -10,6 +10,7 @@ import { Event, EventTypeOption } from "../../types/Event";
 import { useFirebaseCtx } from "../FirebaseCtx";
 import { useGroupCtx } from "../../components/group/GroupCtx";
 import moment from "moment";
+import { useDateRangeCtx } from "../dateRangeCtx/DateRangeCtx";
 
 type SortedEvents = {
   [P in EventTypeOption]?: Event[];
@@ -26,14 +27,19 @@ const EventsCtx = createContext<Partial<EventsCtxProps>>({});
 export const EventsCtxProvider = (props: any) => {
   const { firestore } = useFirebaseCtx();
   const { group } = useGroupCtx();
+  const { dateRange } = useDateRangeCtx();
   const [events, setEvents] = useState<Event[]>();
   const [eventsObj, setEventsObj] = useState<{ [id: string]: Event }>();
 
   useEffect(() => {
     let unsubscribe: any = () => null;
-    if (firestore && group) {
+    if (firestore && group && dateRange) {
+      const { earliest, latest } = dateRange;
+
       unsubscribe = firestore
         ?.collection(`groups/${group.id}/events`)
+        .where("startUnix", "<", latest)
+        .where("startUnix", ">", earliest)
         .onSnapshot(snapshot => {
           const _events: Event[] = [];
           snapshot.forEach(doc => {
@@ -56,7 +62,7 @@ export const EventsCtxProvider = (props: any) => {
         });
     }
     return unsubscribe;
-  }, [firestore, group]);
+  }, [dateRange, firestore, group]);
 
   const sortedEvents = useMemo(() => {
     const _sorted = events?.reduce((obj: SortedEvents, evt) => {
@@ -74,7 +80,6 @@ export const EventsCtxProvider = (props: any) => {
 
     if (_sorted?.show && _sorted?.show.length && _sorted.hotel?.length) {
       _sorted?.show.forEach(show => {
-        console.log("show", show);
         show.amHotels = _sorted.hotel?.filter(
           hotel =>
             hotel.startDate &&
@@ -99,7 +104,6 @@ export const EventsCtxProvider = (props: any) => {
         );
       });
     }
-    console.log("_sorted", _sorted);
     return _sorted;
   }, [events]);
 
@@ -114,7 +118,7 @@ export const EventsCtxProvider = (props: any) => {
 export const useEventsCtx = (eventId?: string) => {
   const ctx = useContext(EventsCtx);
   const { events, sortedEvents } = ctx;
-
+  const { dateRange, setDateRange } = useDateRangeCtx();
   const prevAndNext = useMemo(() => {
     if (eventId && events) {
       const gigEvents = sortedEvents?.show;
@@ -130,11 +134,41 @@ export const useEventsCtx = (eventId?: string) => {
     return { prev: undefined, next: undefined };
   }, [eventId, events, sortedEvents]);
 
-  const relatedEvents = useMemo(() => {
-    console.log("getting related events", eventId);
-    return eventId
-      ? events?.filter(evt => evt.relatedEvents?.includes(eventId))
-      : [];
-  }, [events, eventId]);
-  return { ...ctx, prevAndNext, relatedEvents };
+  const getEventsAtTimes = useCallback(
+    ({
+      startTime,
+      endTime,
+      rangeDays = 1
+    }: {
+      startTime: number;
+      endTime: number;
+      rangeDays?: number;
+    }) => {
+      const targetEarliest = startTime - rangeDays * 86400;
+      const targetLatest = endTime + rangeDays * 86400;
+      const earliest = dateRange?.earliest;
+      const latest = dateRange?.latest;
+      if (
+        earliest &&
+        latest &&
+        (targetEarliest < earliest || targetLatest > latest)
+      ) {
+        // go fetch travels
+        setDateRange &&
+          setDateRange(old => ({
+            earliest: Math.min(targetEarliest - 86400, old.earliest),
+            latest: Math.max(targetLatest + 86400, old.latest)
+          }));
+        return [];
+      } else if (ctx.sortedEvents?.show) {
+        return ctx.sortedEvents?.show.filter(
+          event =>
+            event.startUnix > targetEarliest && event.startUnix < targetLatest
+        );
+      }
+    },
+    [ctx.sortedEvents, dateRange, setDateRange]
+  );
+
+  return { ...ctx, prevAndNext, getEventsAtTimes };
 };

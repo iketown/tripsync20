@@ -1,23 +1,27 @@
-import React, { useEffect, useRef, useState, useContext } from "react";
-import { useMapBoxCtx } from "./MapBoxCtxSimple";
-import ReactMapboxGL, { Marker, Layer, Feature, Popup } from "react-mapbox-gl";
-import { FaStar, FaHSquare, FaPlane } from "react-icons/fa";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { useField } from "react-final-form";
+import ReactMapboxGL from "react-mapbox-gl";
+
+import { iataCodeToLocId } from "../../hooks/useLocation";
+import { Event } from "../../types/Event";
+import {
+  LocBasicType,
+  NearbyAirport,
+  LocPoint
+} from "../../types/location.types";
 import ShowMe from "../../utils/ShowMe";
-import { fitMapToLocs, EventLoc, gigLocToMapLoc } from "./mapboxHelpers";
-import { Typography, Grid } from "@material-ui/core";
-import AirportMarker from "./AirportMarker";
 import AirportCMarker from "./AirportCMarker";
 import GigCMarker from "./GigCMarker";
 import HotelCMarker from "./HotelCMarker";
-//
-//
-import { Event } from "../../types/Event";
-import { LocBasicType, NearbyAirport } from "../../types/location.types";
-import { useField } from "react-final-form";
-import { iataCodeToLocId } from "../../hooks/useLocation";
+import { useMapBoxCtx } from "./MapBoxCtxSimple";
+import { fitMapToLocs, gigLocToMapLoc } from "./mapboxHelpers";
+import RouteLine from "./RouteLine";
+import { useGroupCtx } from "../group/GroupCtx";
 
+//
+//
 const accessToken = process.env.REACT_APP_MAPBOX_TOKEN || "";
-const Map = ReactMapboxGL({ accessToken, maxZoom: 15 });
+const Map = ReactMapboxGL({ accessToken, maxZoom: 15, scrollZoom: false });
 
 const TravelTargetMap = ({
   idName = "",
@@ -26,76 +30,61 @@ const TravelTargetMap = ({
   idName?: string;
   locBasicName?: string;
 }) => {
+  const { group } = useGroupCtx();
+  const defMapCenter = group?.defaultMapCenter;
   const [map, setMap] = useState<mapboxgl.Map>();
   const { state } = useMapBoxCtx();
   const { input: idInput } = useField(idName);
   const { input: basicInput } = useField(locBasicName);
   const selectedId = idInput.value;
 
-  const [center, setCenter] = useState(
-    state?.gigLocs && !!state.gigLocs[0] && gigLocToMapLoc(state?.gigLocs[0])
-  );
-  const [zoom, setZoom] = useState<[number]>([12]);
+  const [zoom, setZoom] = useState<[number]>([4]);
 
-  const hotels = state?.hotels;
-  const gigLocs = state?.gigLocs;
-  const airports = state?.airports;
+  const fromHotels = state?.fromLocs.hotels || [];
+  const fromGigs = state?.fromLocs.gigs || [];
+  const fromAirports = state?.fromLocs.airports || [];
+  const fromOtherLocs = state?.fromLocs.otherLocs || [];
+  const toHotels = state?.toLocs.hotels || [];
+  const toGigs = state?.toLocs.gigs || [];
+  const toAirports = state?.toLocs.airports || [];
+  const toOtherLocs = state?.toLocs.otherLocs || [];
+
+  const hotels = fromHotels.concat(toHotels);
+  const gigs = fromGigs.concat(toGigs);
+  const airports = fromAirports.concat(toAirports);
+  const otherLocs = fromOtherLocs.concat(toOtherLocs);
   const bounds = state?.bounds;
   const routes = state?.routes;
 
   const boundsCount = useRef(0);
+
   useEffect(() => {
     if (map) {
       //@ts-ignore
       window.mapbox = map;
-      // if (bounds && bounds.length) {
-      //   console.log("doing bounds", boundsCount.current++, bounds);
-      //   fitMapToLocs({ map, locs: bounds.filter(loc => !!loc) });
-      // } else {
-      //   console.log("setting center");
-      //   setCenter(state?.gigLocs && state.gigLocs[0]);
-      //   map.setZoom(12);
-      // }
-      if (bounds && bounds.length > 1) {
-        fitMapToLocs({ map, locs: bounds });
-      } else {
-        console.log("doing center");
-        const centerLoc =
-          state?.gigLocs &&
-          !!state.gigLocs[0] &&
-          gigLocToMapLoc(state?.gigLocs[0]);
 
-        centerLoc && map.setCenter(centerLoc);
+      if (state && state.bounds?.length) {
+        fitMapToLocs({ map, locs: state.bounds });
       }
     }
-  }, [bounds, map, state]);
+  }, [map, state]);
 
   return (
     <>
       <Map
         style="mapbox://styles/brianeichenberger/ck48bhoze4o2u1cqpygnfu0kc"
         pitch={[10]}
-        containerStyle={{ height: "20rem" }}
+        containerStyle={{ height: "25rem" }}
         onStyleLoad={(map, event) => {
           setMap(map);
           //@ts-ignore
           window.map = map;
         }}
-        center={center}
         movingMethod="easeTo"
         zoom={zoom}
+        center={gigLocToMapLoc(defMapCenter)}
       >
         <>
-          {/* {center && (
-            <Marker
-              anchor="center"
-              coordinates={gigLocToMapLoc(center)}
-              onClick={() => console.log("wuzzup")}
-              style={{ cursor: "pointer", fontSize: "1rem" }}
-            >
-              <FaStar style={{ color: "orange" }} />
-            </Marker>
-          )} */}
           {hotels &&
             hotels.length &&
             hotels.map((hotel: LocBasicType, index: number) => {
@@ -114,12 +103,15 @@ const TravelTargetMap = ({
                 />
               );
             })}
-          {gigLocs &&
-            gigLocs.length &&
-            gigLocs.map((gigLoc: LocBasicType, index: number) => {
-              if (!gigLoc) return null;
-              const gigLocId = gigLoc.id;
+
+          {gigs &&
+            gigs.length &&
+            gigs.map((gig: Event, index: number) => {
+              if (!gig.locBasic) return null;
+              const gigLoc = gig.locBasic;
+              const gigLocId = gig.locId;
               const isSelected = gigLocId === selectedId;
+              const isPopupOpen = true;
               const handleClick = () => {
                 idInput.onChange(gigLocId);
                 basicInput.onChange(gigLoc);
@@ -127,12 +119,12 @@ const TravelTargetMap = ({
               return (
                 <GigCMarker
                   key={`${gigLoc.lat}${gigLoc.lng}${index}`}
-                  {...{ gigLoc, isSelected, handleClick }}
+                  {...{ gig, gigLoc, isSelected, isPopupOpen, handleClick }}
                 />
               );
             })}
-
-          {routes && routes.length && (
+          {routes && routes.length && <RouteLine routes={routes} />}
+          {/* {routes && routes.length && (
             <Layer
               type="line"
               id="selected-route"
@@ -155,7 +147,7 @@ const TravelTargetMap = ({
                 );
               })}
             </Layer>
-          )}
+          )} */}
 
           {airports &&
             airports.length &&
@@ -176,7 +168,7 @@ const TravelTargetMap = ({
             })}
         </>
       </Map>
-      {/* <ShowMe obj={state} name="state" /> */}
+      <ShowMe obj={state} name="state" />
     </>
   );
 };

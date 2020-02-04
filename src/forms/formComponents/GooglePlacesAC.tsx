@@ -7,8 +7,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import parse from "autosuggest-highlight/parse";
 import { throttle } from "lodash";
 import { geocodeByPlaceId } from "react-places-autocomplete";
-import { LocPoint } from "../../types/location.types";
-import { LngLatLike } from "mapbox-gl";
+import { LocPoint, LocBasicType } from "../../types/location.types";
+import { getTimeZoneFromLatLng } from "../../utils/locationFxns";
 const autocompleteService = { current: null };
 
 const useStyles = makeStyles(theme => ({
@@ -40,7 +40,9 @@ export default function GooglePlacesAC({
   submitting,
   setSubmitting,
   biasCenterLoc,
-  biasCenterRadius = 64000
+  biasCenterRadius = 64000,
+  value,
+  setValue
 }: {
   setLocation?: any;
   label?: string;
@@ -49,6 +51,8 @@ export default function GooglePlacesAC({
   setSubmitting?: (val: boolean) => void;
   biasCenterLoc?: LocPoint;
   biasCenterRadius?: number; // distance in meters
+  value?: LocBasicType;
+  setValue?: (loc: LocBasicType | null, placeId: string | null) => void;
 }) {
   const classes = useStyles();
   const [inputValue, setInputValue] = React.useState("");
@@ -59,13 +63,18 @@ export default function GooglePlacesAC({
   };
 
   const handleSelect = async (e: any, loc: PlaceType) => {
+    if (!loc) {
+      setLocation(null);
+      setValue && setValue(null, null);
+      return;
+    }
     setSubmitting && setSubmitting(true);
     const { place_id } = loc;
     await geocodeByPlaceId(place_id)
-      .then(([result]) => {
-        console.log("result", result);
+      .then(async ([result]) => {
         const lat = result.geometry.location.lat();
         const lng = result.geometry.location.lng();
+        const timeZoneId = await getTimeZoneFromLatLng({ lat, lng });
         let cityObj = result.address_components.find(comp =>
           comp.types.includes("locality")
         );
@@ -85,7 +94,7 @@ export default function GooglePlacesAC({
         const country = countryObj && countryObj.long_name;
         const countryShort = (countryObj && countryObj.short_name) || country;
         const town = (townObj && townObj.long_name) || "";
-        setLocation({
+        const locBasic = {
           lat,
           lng,
           address,
@@ -99,8 +108,11 @@ export default function GooglePlacesAC({
           shortName: `${city || town}, ${stateShort || state || ""}${
             countryShort !== "US" ? " " + countryShort : ""
           }`,
-          venueName: loc.structured_formatting.main_text
-        });
+          venueName: loc.structured_formatting.main_text,
+          timeZoneId
+        };
+        setLocation(locBasic);
+        setValue && setValue(locBasic, place_id);
       })
       .catch(err => console.log("error", err));
   };
@@ -156,12 +168,13 @@ export default function GooglePlacesAC({
   return (
     <>
       <Autocomplete
-        id="google-map-demo"
+        id={`google-map-${Math.random()}`}
         getOptionLabel={option => {
-          return option.description;
+          return option.description || option.venueName;
         }}
         style={{ minWidth: "11rem", width: "100%" }}
         filterOptions={x => x}
+        value={value}
         onChange={handleSelect}
         options={options}
         autoComplete

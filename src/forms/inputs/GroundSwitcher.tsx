@@ -19,9 +19,18 @@ export const GroundSwitcher = ({
   label
 }: GroundSwitcherProps) => {
   const { state } = useMapBoxCtx();
-  const hotels = state?.hotels || [];
-  const otherLocs = state?.otherLocs || [];
-  const gigLocs = state?.gigLocs || [];
+
+  const fromHotels = state?.fromLocs.hotels || [];
+  const fromGigs = state?.fromLocs.gigs || [];
+  const fromOtherLocs = state?.fromLocs.otherLocs || [];
+  const toHotels = state?.toLocs.hotels || [];
+  const toGigs = state?.toLocs.gigs || [];
+  const toOtherLocs = state?.toLocs.otherLocs || [];
+
+  const hotels = fromHotels.concat(toHotels);
+  const gigs = fromGigs.concat(toGigs);
+  const gigLocs = gigs.map(({ locBasic }) => locBasic);
+  const otherLocs = fromOtherLocs.concat(toOtherLocs);
 
   return (
     <DefaultLocSwitcher

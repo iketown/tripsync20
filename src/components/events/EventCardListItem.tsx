@@ -9,18 +9,21 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemSecondaryAction,
-  ListItemText
+  ListItemText,
+  Typography
 } from "@material-ui/core";
 import { ExpandMore } from "@material-ui/icons";
 import moment from "moment-timezone";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FaEdit, FaHotel, FaPaperPlane, FaStar } from "react-icons/fa";
 
 import { EventIcon } from "../../constants/Icons";
 import { useDialogCtx } from "../../contexts/dialogCtx/DialogCtx";
 import { useEventsCtx } from "../../contexts/eventsCtx/EventsCtx";
+import { useTravelCtx } from "../../contexts/travelCtx/TravelCtx";
 import { Event } from "../../types/Event";
-import ShowMe from "../../utils/ShowMe";
+import ShowTree from "../../utils/ShowTree";
+import TravelIcons from "./TravelIcons";
 
 interface EventListItemProps {
   expanded: boolean;
@@ -38,13 +41,19 @@ const EventCardListItem = ({
   editEvent
 }: EventListItemProps) => {
   const { dispatch } = useDialogCtx();
-
-  const { relatedEvents, prevAndNext } = useEventsCtx(eventId);
+  const { prevAndNext } = useEventsCtx(eventId);
+  const { travelObj } = useTravelCtx();
   const { amHotels, pmHotels } = event;
   const { prev, next } = prevAndNext;
+  const { prevTravel, nextTravel } = useMemo(() => {
+    const prevTravel = travelObj && travelObj[eventId];
+    const nextTravel = travelObj && next && travelObj[next.id];
+    return { prevTravel, nextTravel };
+  }, [eventId, next, travelObj]);
   const openTravel = (before: boolean) => {
     const fromEventId = before ? prev?.id : eventId;
     const toEventId = before ? eventId : next?.id;
+    console.log({ fromEventId, toEventId });
     dispatch({
       type: "OPEN_DIALOG",
       formType: "travel",
@@ -64,11 +73,14 @@ const EventCardListItem = ({
   };
   return (
     <>
-      {expanded && (
-        <Button onClick={() => openTravel(true)}>
-          <FaPaperPlane style={{ marginRight: "5px" }} /> Travel to{" "}
-          {event.locBasic.shortName}
-        </Button>
+      {expanded && prev && (
+        <>
+          <Button onClick={() => openTravel(true)}>
+            <FaPaperPlane style={{ marginRight: "5px" }} /> Travel to{" "}
+            {event.locBasic.shortName}
+          </Button>
+          <TravelIcons travel={prevTravel} />
+        </>
       )}
       <ExpansionPanel
         className="tightList"
@@ -102,10 +114,11 @@ const EventCardListItem = ({
               eventId={eventId}
               event={event}
             />
+            <ShowTree obj={prevAndNext} name="prevAndNext" />
           </List>
-          {/* <ShowMe obj={relatedEvents} name="relatedEvents" /> */}
         </ExpansionPanelDetails>
         <ExpansionPanelActions>
+          <Typography variant="caption">{eventId}</Typography>
           <Button onClick={() => openHotel({})}>
             <FaHotel style={{ marginRight: "5px" }} /> Hotel
           </Button>
@@ -114,11 +127,14 @@ const EventCardListItem = ({
           </Button>
         </ExpansionPanelActions>
       </ExpansionPanel>
-      {expanded && (
-        <Button onClick={() => openTravel(false)}>
-          <FaPaperPlane style={{ marginRight: "5px" }} /> Travel from{" "}
-          {event.locBasic.shortName}
-        </Button>
+      {expanded && next && (
+        <>
+          <Button onClick={() => openTravel(false)}>
+            <FaPaperPlane style={{ marginRight: "5px" }} /> Travel from{" "}
+            {event.locBasic.shortName}
+          </Button>
+          <TravelIcons travel={nextTravel} />
+        </>
       )}
     </>
   );

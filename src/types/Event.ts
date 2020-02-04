@@ -11,6 +11,8 @@ export type Event = {
   id: string;
   eventType: EventTypeOption;
   startDate: string;
+  startUnix: number;
+  endUnix?: number;
   locId: string;
   locBasic: LocBasicType;
   relatedEvents?: string[];
